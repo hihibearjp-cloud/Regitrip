@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#FFF8F0">
+    <title>Regina 走跳筆記 6.0</title>
+    
+    <!-- 核心庫 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2060/2060284.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2060/2060284.png">
+    
+    <style>
+        body { font-family: 'Zen Maru Gothic', sans-serif; background-color: #FFF8F0; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; height: 100vh; overflow: hidden; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); color: #4b5563; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        input, textarea, select { -webkit-user-select: text; user-select: text; font-family: 'Zen Maru Gothic', sans-serif; font-weight: 700; color: #374151; }
+        
+        .btn-3d { transition: all 0.1s; border-bottom-width: 5px; position: relative; top: 0; border-radius: 1rem; }
+        .btn-3d:active { top: 5px; border-bottom-width: 0px; }
+        .btn-blue { background-color: #60a5fa; border-color: #2563eb; color: white; }
+        .btn-pink { background-color: #f472b6; border-color: #db2777; color: white; }
+        .btn-yellow { background-color: #fbbf24; border-color: #d97706; color: white; }
+        .btn-indigo { background-color: #818cf8; border-color: #4f46e5; color: white; }
+        .btn-green { background-color: #34d399; border-color: #059669; color: white; }
+        .btn-gray { background-color: #9ca3af; border-color: #4b5563; color: white; }
+
+        .card-shadow { box-shadow: 4px 4px 0px rgba(0,0,0,0.05); border: 3px solid #f3f4f6; border-radius: 1.5rem; }
+        
+        .nav-btn { height: 60px; font-size: 1.1rem; border-radius: 1rem; border-width: 3px; letter-spacing: 0.05em; }
+        .nav-active { transform: translateY(2px); box-shadow: inset 3px 3px 0px rgba(0,0,0,0.1); border-color: transparent; color: white; }
+        .nav-inactive { background-color: white; border-color: #e5e7eb; color: #9ca3af; }
+        
+        .daily-header { background: #E0F2FE; border-left: 6px solid #38BDF8; color: #0369A1; border-radius: 0 1rem 1rem 0; }
+        .camera-glow { box-shadow: 0 0 15px rgba(250, 204, 21, 0.6); }
+        .bling-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .edit-mode-glow { box-shadow: 0 0 15px rgba(251, 146, 60, 0.4); border-color: #fdba74; }
+    </style>
+</head>
+<body>
+    <div id="app" class="h-full w-full flex flex-col bg-[#FFF8F0]">
+        
+        <!-- Header -->
+        <header class="flex-none bg-white/95 backdrop-blur-md z-50 border-b-2 border-gray-200 shadow-sm pt-safe-top">
+            <!-- 容器寬度加大到 6xl 以適應 iPad 橫向 -->
+            <div class="w-full max-w-6xl mx-auto px-4 py-3 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-2xl font-black text-orange-400 tracking-wider flex items-center relative group cursor-default" style="font-weight: 900;">
+                        <span class="mr-2 text-3xl transform group-hover:scale-110 transition-transform">✈️</span> 
+                        Regina走跳筆記
+                        <span class="absolute -top-2 -right-5 text-xl bling-pulse text-yellow-400">✨</span>
+                    </h1>
+                    <button @click="showSettings = true" class="p-2 bg-gray-100 rounded-2xl border-b-4 border-gray-300 text-gray-500 hover:bg-gray-200 active:border-b-0 active:translate-y-1 transition-all">
+                        ⚙️ 設定
+                    </button>
+                </div>
+                <!-- 導覽列 -->
+                <div class="flex gap-2 p-1 bg-gray-50 rounded-2xl overflow-x-auto hide-scrollbar">
+                    <button @click="activeTab = 'schedule'" :class="['nav-btn flex-1 min-w-[85px] font-black transition-all flex items-center justify-center gap-1', activeTab === 'schedule' ? 'nav-active bg-pink-400' : 'nav-inactive hover:bg-pink-50 hover:text-pink-400']">📅 行程</button>
+                    <button @click="activeTab = 'accounting'" :class="['nav-btn flex-1 min-w-[85px] font-black transition-all flex items-center justify-center gap-1', activeTab === 'accounting' ? 'nav-active bg-blue-400' : 'nav-inactive hover:bg-blue-50 hover:text-blue-400']">💸 記帳</button>
+                    <button @click="activeTab = 'shopping'" :class="['nav-btn flex-1 min-w-[85px] font-black transition-all flex items-center justify-center gap-1', activeTab === 'shopping' ? 'nav-active bg-yellow-400' : 'nav-inactive hover:bg-yellow-50 hover:text-yellow-400']">🛍️ 購物</button>
+                    <button @click="activeTab = 'packing'" :class="['nav-btn flex-1 min-w-[85px] font-black transition-all flex items-center justify-center gap-1', activeTab === 'packing' ? 'nav-active bg-indigo-400' : 'nav-inactive hover:bg-indigo-50 hover:text-indigo-400']">🧳 行李</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto overflow-x-hidden pb-safe-bottom">
+            <!-- 這裡使用 max-w-6xl 讓 iPad 版面更寬敞 -->
+            <div class="w-full max-w-6xl mx-auto px-4 py-4 space-y-6 pb-24">
+                
+                <!-- === 📅 行程 (RWD: 手機上下排 / iPad 左右分欄) === -->
+                <div v-if="activeTab === 'schedule'" class="space-y-6 animate-fade-in">
+                    
+                    <!-- iPad 上方控制區 -->
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <!-- 封面圖 (iPad 變小一點放左邊) -->
+                        <div class="relative w-full md:w-1/3 aspect-[2.5/1] md:aspect-video bg-gray-100 rounded-[2rem] overflow-hidden shadow-lg border-4 border-white group">
+                            <img v-if="photos[scheduleDay]" :src="photos[scheduleDay]" class="w-full h-full object-cover">
+                            <div v-else class="flex flex-col items-center justify-center h-full text-gray-300 font-black text-xl bg-gray-100"><span>📷 設定封面</span></div>
+                            <input type="file" accept="image/*" @change="handlePhotoUpload" class="absolute inset-0 opacity-0 cursor-pointer">
+                        </div>
+                        
+                        <!-- 日期與匯入按鈕 (iPad 放右邊) -->
+                        <div class="flex-1 flex flex-col justify-between gap-3">
+                            <div class="flex space-x-3 overflow-x-auto pb-2 hide-scrollbar">
+                                <button v-for="(day, index) in settings.tripDays" :key="day" @click="scheduleDay = day" 
+                                    :class="['px-5 py-3 rounded-2xl font-black text-sm whitespace-nowrap transition-all border-2 flex flex-col items-center min-w-[90px]', scheduleDay === day ? 'bg-pink-400 border-pink-600 text-white shadow-[4px_4px_0px_#be185d] -translate-y-1' : 'bg-white border-gray-200 text-gray-400']">
+                                    <span>{{ day }}</span><span v-if="getRealDate(index)" class="text-[10px] opacity-90 font-mono mt-1">{{ getRealDate(index) }}</span>
+                                </button>
+                                <button @click="addDay" class="px-4 py-3 bg-white border-2 border-dashed border-gray-300 text-gray-400 rounded-2xl font-black text-2xl">+</button>
+                            </div>
+                            <button @click="showImportMenu = true" class="w-full py-4 bg-pink-50 text-pink-500 rounded-2xl border-2 border-pink-200 font-black shadow-sm active:scale-95 text-lg">📥 匯入行程 (照片/文字)</button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row gap-6 items-start">
+                        <!-- 左側：編輯區 (iPad Sticky) -->
+                        <div :class="['w-full md:w-1/3 bg-white p-5 rounded-3xl border-2 shadow-sm relative z-10 transition-all md:sticky md:top-4', editingScheduleId ? 'border-orange-300 edit-mode-glow' : 'border-pink-100']">
+                            <div class="flex justify-between mb-2">
+                                <span :class="['text-xs font-black px-2 py-1 rounded', editingScheduleId ? 'bg-orange-100 text-orange-500' : 'bg-pink-100 text-pink-500']">
+                                    {{ editingScheduleId ? '✏️ 修改模式' : '➕ 新增模式' }}
+                                </span>
+                                <button v-if="editingScheduleId" @click="cancelEditSchedule" class="text-xs text-gray-400 font-bold hover:text-gray-600">取消</button>
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input type="time" v-model="form.scheduleTime" class="bg-gray-50 rounded-xl px-2 py-3 font-black w-1/3 text-sm outline-none border-2 border-gray-100 text-gray-600 focus:border-pink-300">
+                                <input type="text" v-model="form.scheduleTitle" placeholder="行程名稱" class="flex-1 bg-gray-50 rounded-xl px-3 py-3 font-black text-sm outline-none border-2 border-gray-100 focus:bg-white focus:border-pink-300">
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" v-model="form.scheduleLoc" placeholder="地點" class="flex-1 bg-gray-50 rounded-xl px-3 py-3 font-bold text-sm outline-none border-2 border-gray-100 focus:bg-white focus:border-pink-300">
+                                <button @click="addSchedule" :class="['btn-3d px-4 rounded-xl font-black shadow-lg text-white', editingScheduleId ? 'btn-orange' : 'btn-pink']">
+                                    {{ editingScheduleId ? '確認修改' : '新增' }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 右側：行程列表 (iPad 變寬) -->
+                        <div class="flex-1 space-y-4 relative pl-4 md:pl-0 w-full">
+                            <div class="absolute left-7 top-4 bottom-4 w-1 bg-gray-200 rounded-full md:hidden"></div>
+                            <div v-for="item in currentSchedule" :key="item.id" class="relative flex items-start space-x-4 md:space-x-0 group">
+                                <div class="w-6 h-6 rounded-full bg-white border-4 border-pink-300 z-10 shrink-0 mt-5 md:hidden"></div>
+                                <div class="flex-1 bg-white p-5 rounded-3xl border-2 border-gray-100 shadow-sm hover:border-pink-200 transition-colors">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="bg-pink-100 text-pink-500 px-3 py-1 rounded-xl text-sm font-black font-mono border border-pink-200">{{ item.time }}</span>
+                                        <div class="flex gap-2">
+                                            <button @click="editSchedule(item)" class="text-gray-300 hover:text-blue-400 font-bold p-1">✏️</button>
+                                            <button @click="deleteItem('schedule', item.id)" class="text-gray-300 hover:text-red-400 font-bold p-1">✕</button>
+                                        </div>
+                                    </div>
+                                    <h3 class="font-black text-xl text-gray-700">{{ item.title }}</h3>
+                                    <div v-if="item.location" class="mt-3 pt-3 border-t-2 border-dashed border-gray-100 flex justify-between items-center">
+                                        <div class="text-sm text-gray-500 font-bold tracking-wide">📍 {{ item.location }}</div>
+                                        <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`" target="_blank" class="bg-green-100 text-green-600 px-4 py-2 rounded-xl font-black border-2 border-green-200 text-xs hover:bg-green-200">導航</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- === 💸 記帳 (RWD: 輸入與列表並排) === -->
+                <div v-if="activeTab === 'accounting'" class="space-y-6 animate-fade-in">
+                    
+                    <div class="flex flex-col lg:flex-row gap-6 items-start">
+                        <!-- 左側欄位：儀表板 + 輸入區 (iPad 固定左側) -->
+                        <div class="w-full lg:w-1/3 space-y-6 lg:sticky lg:top-4">
+                            <!-- 預算 -->
+                            <div class="bg-white p-6 rounded-[2.5rem] border-2 border-gray-100 shadow-sm flex justify-between items-center">
+                                <div>
+                                    <div class="text-sm text-gray-400 font-black uppercase mb-1 tracking-widest">剩餘預算</div>
+                                    <div :class="['text-4xl font-black tracking-tight', remainingBudget < 0 ? 'text-red-400' : 'text-gray-700']">${{ formatNumber(remainingBudget) }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm text-gray-400 font-black tracking-widest">已支出</div>
+                                    <div class="text-2xl font-black text-blue-500">${{ formatNumber(totalSpentTWD) }}</div>
+                                </div>
+                            </div>
+
+                            <!-- 輸入區 -->
+                            <div class="bg-white p-6 rounded-[2rem] border-4 border-blue-50 relative shadow-sm space-y-5">
+                                <div v-if="ocrProcessing" class="absolute inset-0 bg-white/90 z-20 flex flex-col items-center justify-center rounded-[2rem] backdrop-blur-sm">
+                                    <div class="animate-spin text-4xl mb-2">🤖</div><div class="text-blue-500 font-black text-xl animate-pulse">讀取中...</div>
+                                </div>
+                                
+                                <div class="flex gap-3 items-stretch h-20">
+                                    <div class="relative w-1/2">
+                                        <span class="absolute left-4 top-2 text-[10px] text-gray-400 font-black tracking-widest">金額</span>
+                                        <span class="absolute left-4 bottom-4 text-gray-400 font-black text-xl">{{ getSymbol(txForm.currency) }}</span>
+                                        <input type="number" v-model="txForm.amount" placeholder="0" class="w-full h-full pl-4 pr-2 pt-5 bg-gray-50 rounded-2xl text-3xl font-black outline-none focus:ring-4 focus:ring-blue-100 border-2 border-gray-200 text-gray-700">
+                                    </div>
+                                    <div class="flex-1 relative">
+                                        <label class="absolute left-3 top-2 text-[10px] text-gray-400 font-black z-10 tracking-widest">幣別</label>
+                                        <select v-model="txForm.currency" class="w-full h-full bg-gray-100 rounded-2xl px-1 pt-4 font-black text-xl text-center border-2 border-gray-200 outline-none appearance-none text-gray-700">
+                                            <option v-for="c in settings.currencies" :value="c.code">{{ c.flag }} {{ c.code }}</option>
+                                        </select>
+                                    </div>
+                                    <label class="w-20 h-full flex items-center justify-center btn-3d btn-yellow rounded-2xl cursor-pointer camera-glow">
+                                        <span class="text-4xl filter drop-shadow-sm">📷</span>
+                                        <input type="file" accept="image/*" capture="environment" @change="handleReceiptOCR" class="hidden">
+                                    </label>
+                                </div>
+
+                                <div class="flex gap-3">
+                                    <select v-model="txForm.methodId" class="w-32 bg-blue-50 text-blue-600 rounded-2xl px-2 py-4 font-black text-base outline-none border-2 border-blue-200 focus:border-blue-400">
+                                        <option v-for="m in settings.methods" :value="m.id">{{ m.name }}</option>
+                                    </select>
+                                    <input type="text" v-model="txForm.item" placeholder="品項 (如: 拉麵)" class="flex-1 bg-gray-50 rounded-2xl px-4 py-4 font-black text-xl outline-none border-2 border-transparent focus:border-blue-200 text-gray-700 placeholder-gray-300">
+                                </div>
+
+                                <div class="flex gap-3 items-stretch">
+                                    <div class="flex-1 flex flex-col justify-end">
+                                        <label class="text-[10px] text-gray-400 font-black ml-1 mb-1 tracking-widest">支付平台</label>
+                                        <select v-model="txForm.platformId" class="w-full h-14 bg-green-50 text-green-600 rounded-2xl px-3 font-black text-lg outline-none border-2 border-green-200 focus:border-green-400">
+                                            <option v-for="p in settings.platforms" :value="p.id">{{ p.name }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="w-28 flex flex-col justify-end">
+                                        <label class="text-[10px] text-gray-400 font-black ml-1 mb-1 tracking-widest">墊付人</label>
+                                        <select v-model="txForm.payer" class="w-full h-14 bg-gray-50 text-gray-600 rounded-2xl px-2 font-black text-sm outline-none border-2 border-gray-200 text-center">
+                                            <option v-for="m in settings.members" :value="m">{{ m }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex flex-col justify-end">
+                                        <button @click="saveTransaction" class="w-16 h-14 btn-3d btn-blue rounded-2xl font-black text-2xl flex items-center justify-center">＋</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-end gap-2 pt-2">
+                                    <span class="text-xs font-bold text-gray-400">幫人買?</span>
+                                    <button @click="txForm.usageType = txForm.usageType === 'self' ? 'help' : 'self'" 
+                                        :class="['w-12 h-6 rounded-full transition-colors relative', txForm.usageType === 'help' ? 'bg-pink-400' : 'bg-gray-200']">
+                                        <div :class="['w-4 h-4 bg-white rounded-full absolute top-1 transition-all', txForm.usageType === 'help' ? 'left-7' : 'left-1']"></div>
+                                    </button>
+                                </div>
+                                <input v-if="txForm.usageType === 'help'" type="text" v-model="txForm.targetName" placeholder="幫誰買？(輸入名字)" class="w-full bg-pink-50 text-pink-500 rounded-xl px-4 py-3 font-black text-sm outline-none border-2 border-pink-200 placeholder-pink-300">
+                            </div>
+                        </div>
+
+                        <!-- 右側欄位：交易列表 -->
+                        <div class="flex-1 space-y-8 pb-24">
+                            <div class="flex justify-end"><button @click="showSettlement=true" class="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">📊 分帳報表</button></div>
+                            <div v-for="(group, date) in groupedTransactions" :key="date">
+                                <div class="daily-header px-4 py-3 rounded-r-2xl rounded-bl-2xl mb-3 flex justify-between items-center shadow-sm">
+                                    <h3 class="font-black text-lg tracking-wider">{{ date }}</h3>
+                                    <div class="font-black text-base">本日合計: ${{ formatNumber(group.totalTWD) }}</div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div v-for="t in group.items" :key="t.id" class="bg-white p-5 rounded-3xl border-3 border-gray-50 flex justify-between items-center shadow-sm hover:border-blue-100 transition-colors">
+                                        <div>
+                                            <div class="font-black text-gray-700 text-xl mb-1 flex items-center">
+                                                {{ t.item }}
+                                                <span v-if="t.usageType === 'help'" class="ml-2 text-xs bg-pink-100 text-pink-500 px-2 py-1 rounded-lg border border-pink-200">幫 {{ t.targetName }}</span>
+                                            </div>
+                                            <div class="text-sm text-gray-400 font-bold flex gap-2 items-center flex-wrap">
+                                                <span class="bg-blue-50 text-blue-500 px-2 py-1 rounded-lg">{{ t.paymentMethodName }}</span>
+                                                <span class="text-gray-200">|</span>
+                                                <span class="bg-green-50 text-green-500 px-2 py-1 rounded-lg">{{ t.paymentPlatformName }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-mono font-black text-gray-800 text-xl">{{ getFlag(t.currency) }} {{ formatNumber(t.amount) }}</div>
+                                            <div class="text-xs text-gray-400 font-bold">≈ NT${{ formatNumber(t.amount * getRate(t.currency)) }}</div>
+                                            <button @click="deleteTransaction(t.id)" class="text-white bg-red-300 rounded-lg text-[10px] font-bold mt-2 px-3 py-1 hover:bg-red-400">刪除</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="transactions.length === 0" class="text-center py-10 text-gray-300 font-black text-xl">還沒有花錢錢喔 💸</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- === 🛍️ 購物 (iPad Grid) === -->
+                <div v-if="activeTab === 'shopping'" class="space-y-5">
+                    <div class="bg-white p-6 rounded-3xl border-2 border-yellow-200 shadow-[6px_6px_0px_#fef08a] relative">
+                        <div class="flex gap-2 mb-3">
+                            <button @click="showImportMenu = true" class="bg-yellow-100 text-yellow-700 px-3 rounded-2xl font-black text-sm border-2 border-yellow-200 hover:bg-yellow-200 transition-colors">📥 匯入</button>
+                            <input type="text" v-model="shopForm.title" placeholder="商品名稱..." class="flex-1 bg-gray-50 rounded-2xl px-4 py-3 font-black text-lg outline-none border-2 border-gray-200 focus:border-yellow-400">
+                            <label class="w-14 flex items-center justify-center bg-gray-100 rounded-2xl cursor-pointer border-2 border-gray-300 text-2xl hover:bg-gray-200 transition-colors">
+                                📷<input type="file" accept="image/*" capture="environment" @change="handleShoppingOCR" class="hidden">
+                            </label>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="relative flex-1">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xs">{{ getSymbol(shopForm.currency) }}</span>
+                                <input type="number" v-model="shopForm.price" placeholder="價格" class="w-full pl-8 pr-2 py-3 bg-gray-50 rounded-xl font-black text-sm outline-none bg-gray-50">
+                            </div>
+                            <select v-model="shopForm.currency" class="bg-gray-50 rounded-xl px-2 font-black text-sm w-20 text-center border-2 border-gray-200 outline-none"><option v-for="c in settings.currencies" :value="c.code">{{ c.flag }}</option></select>
+                        </div>
+                        <div class="flex gap-3 mt-3">
+                            <input type="text" v-model="shopForm.target" placeholder="代購對象 (空=自用)" class="flex-1 bg-pink-50 text-pink-600 rounded-2xl px-4 py-3 font-black text-sm outline-none border-2 border-pink-100 placeholder-pink-300">
+                            <button @click="addShopItem" class="w-24 btn-3d btn-yellow rounded-2xl font-black text-lg shadow-lg">加入</button>
+                        </div>
+                        <div v-if="shopForm.price" class="text-right mt-2 text-xs font-black text-gray-400">≈ NT$ {{ formatNumber(shopForm.price * getRate(shopForm.currency)) }}</div>
+                    </div>
+                    <!-- RWD Grid: 手機1欄, 平板2欄, 電腦3欄 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-20">
+                        <div v-for="item in sortedShoppingList" :key="item.id" @click="item.bought = !item.bought" 
+                             :class="['p-5 rounded-3xl border-2 transition-all flex justify-between items-center shadow-sm cursor-pointer', item.bought ? 'bg-gray-100 border-gray-200 opacity-60' : 'bg-white border-yellow-200 hover:-translate-y-1']">
+                            <div class="flex items-center gap-4 w-full">
+                                <div :class="['w-8 h-8 rounded-full border-4 flex items-center justify-center shrink-0 font-black text-lg', item.bought ? 'bg-green-400 border-green-400 text-white' : 'border-gray-300 text-transparent']">✓</div>
+                                <div class="flex-1">
+                                    <div :class="['font-black text-xl', item.bought ? 'line-through text-gray-400' : 'text-gray-700']">{{ item.title }}</div>
+                                    <div v-if="item.price" class="font-mono font-bold text-gray-500 text-base mt-1">
+                                        {{ getFlag(item.currency) }} {{ formatNumber(item.price) }}
+                                        <span class="text-sm text-gray-400 ml-1">(≈ NT${{ formatNumber(item.price * getRate(item.currency)) }})</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-2">
+                                <span v-if="item.target" class="text-xs bg-pink-100 text-pink-500 px-3 py-1 rounded-full font-black border border-pink-200">幫 {{ item.target }}</span>
+                                <button @click.stop="deleteItem('shopping', item.id)" class="text-gray-300 font-bold text-xl px-2 hover:text-red-400">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- === 🧳 行李 === -->
+                <div v-if="activeTab === 'packing'" class="space-y-6 animate-fade-in">
+                    <div class="bg-indigo-50 p-6 rounded-3xl border-2 border-indigo-200 shadow-sm flex items-center gap-4">
+                        <div class="flex-1"><div class="flex justify-between text-xs font-black text-indigo-800 mb-1"><span>打包進度</span><span>{{ packingProgress }}%</span></div><div class="w-full bg-white rounded-full h-5 border-2 border-indigo-200 overflow-hidden"><div class="bg-indigo-400 h-full transition-all duration-500" :style="{ width: packingProgress + '%' }"></div></div></div><div class="text-center"><div class="text-3xl font-black text-indigo-600">{{ totalPackedItems }}/{{ totalPackingItems }}</div></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-for="(cat, idx) in packingList" :key="idx" class="bg-white rounded-3xl border-2 border-gray-100 shadow-sm overflow-hidden h-fit">
+                            <div class="bg-gray-50 p-4 border-b-2 border-gray-100 flex justify-between items-center"><h3 class="font-black text-lg text-gray-600 flex items-center gap-2"><span class="text-2xl">{{ cat.icon }}</span> {{ cat.name }}</h3><div class="flex gap-2"><button @click="openBatchPacking(idx)" class="text-xs bg-indigo-100 text-indigo-500 px-3 py-1 rounded-lg font-black">📝 批次</button><button @click="deleteCategory(idx)" class="text-gray-300 hover:text-red-400 font-bold px-2">✕</button></div></div>
+                            <div class="p-3 space-y-2"><div v-for="(item, iIdx) in cat.items" :key="iIdx" @click="item.checked = !item.checked" class="flex items-center gap-3 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer active:scale-95 transition-transform border border-transparent hover:border-gray-100"><div :class="['w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors', item.checked ? 'bg-indigo-400 border-indigo-400 text-white' : 'border-gray-300']">✓</div><span :class="['font-bold text-lg flex-1', item.checked ? 'line-through text-gray-300' : 'text-gray-600']">{{ item.name }}</span><button @click.stop="deletePackingItem(idx, iIdx)" class="text-gray-200 hover:text-red-400 px-2 font-bold">✕</button></div><div class="flex gap-2 p-1 mt-2"><input type="text" v-model="cat.newItemName" placeholder="新增物品..." class="flex-1 bg-gray-50 rounded-xl px-3 py-2 text-sm font-bold outline-none border-2 border-transparent focus:border-indigo-200" @keyup.enter="addPackingItem(idx)"><button @click="addPackingItem(idx)" class="bg-indigo-100 text-indigo-500 w-10 rounded-xl font-black text-xl">+</button></div></div>
+                        </div>
+                        <div class="flex gap-2 p-3 bg-white rounded-3xl border-2 border-dashed border-gray-300 h-16 items-center"><input type="text" v-model="newCatName" placeholder="新增類別..." class="flex-1 bg-transparent px-2 font-bold outline-none text-gray-500"><button @click="addCategory" class="bg-gray-200 text-gray-500 px-4 py-2 rounded-xl font-bold">新增</button></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- 匯入選單 Modal -->
+        <div v-if="showImportMenu" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showImportMenu = false">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+                <h3 class="text-2xl font-black text-center mb-4">📥 批量匯入 {{ activeTab === 'schedule' ? '行程' : '購物清單' }}</h3>
+                <div v-if="activeTab === 'schedule'" class="mb-4">
+                    <p class="text-xs text-gray-500 mb-2 font-bold bg-blue-50 p-2 rounded-lg">💡 提示：照片/文字含「Day 1」可自動分天</p>
+                    <select v-model="importTargetDay" class="w-full bg-gray-100 rounded-xl p-3 font-bold"><option v-for="d in settings.tripDays" :value="d">{{ d }}</option></select>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-2xl border-2 border-gray-200"><textarea v-model="importText" class="w-full h-40 bg-transparent outline-none text-base font-bold resize-none" placeholder="貼上文字..."></textarea></div>
+                <div class="flex gap-2">
+                    <button @click="parseTextImport" class="flex-1 btn-3d bg-gray-800 border-gray-900 text-white py-3 rounded-xl font-bold">確認匯入</button>
+                    <label v-if="activeTab === 'schedule'" class="flex-1 btn-3d bg-pink-500 border-pink-700 text-white py-3 rounded-xl font-bold text-center cursor-pointer">📷 拍照<input type="file" accept="image/*" capture="environment" @change="processImportOCR" class="hidden"></label>
+                </div>
+                <div v-if="ocrProcessing" class="text-center text-blue-500 font-black animate-pulse">OCR 辨識中...</div>
+            </div>
+        </div>
+
+        <!-- 批次行李 Modal -->
+        <div v-if="showBatchPacking" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showBatchPacking = false">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+                <h3 class="text-xl font-black text-center">📝 批次新增物品</h3>
+                <div class="bg-gray-50 p-3 rounded-2xl border-2 border-gray-200"><textarea v-model="importText" class="w-full h-40 bg-transparent outline-none text-base font-bold resize-none" placeholder="護照&#10;手機"></textarea></div>
+                <button @click="batchAddPacking" class="w-full btn-3d btn-indigo py-3 rounded-xl font-bold">加入清單</button>
+            </div>
+        </div>
+
+        <!-- 分帳報表 Modal -->
+        <div v-if="showSettlement" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4" @click.self="showSettlement = false">
+            <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl h-[60vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6"><h3 class="text-xl font-black text-indigo-600">分帳結算</h3><button @click="showSettlement = false" class="bg-gray-100 p-2 rounded-full">✕</button></div>
+                <div class="space-y-6">
+                    <div class="p-4 bg-indigo-50 rounded-2xl border-2 border-indigo-100 text-center"><div class="text-sm font-bold text-indigo-400 mb-2">總支出 (台幣)</div><div class="text-4xl font-black text-indigo-900 tracking-tighter">NT$ {{ formatNumber(totalSpentTWD) }}</div></div>
+                    <div v-if="debts.length === 0" class="text-gray-400 text-center py-4">無須結算</div>
+                    <div v-else class="space-y-3"><div v-for="(debt, idx) in debts" :key="idx" class="flex items-center justify-between bg-white border-2 border-gray-100 p-3 rounded-xl"><div class="flex items-center"><span class="font-bold text-red-500 bg-red-50 px-2 py-1 rounded">{{ debt.from }}</span><span class="mx-2 font-black">➜</span><span class="font-bold text-green-500 bg-green-50 px-2 py-1 rounded">{{ debt.to }}</span></div><div class="font-black">NT$ {{ formatNumber(debt.amount) }}</div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 設定 Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl h-[85vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-black">設定</h3><button @click="showSettings = false" class="bg-gray-100 p-2 rounded-full text-xl font-bold">✕</button></div>
+                <div class="space-y-6">
+                    <button @click="fetchRates" class="w-full py-3 bg-purple-100 text-purple-700 rounded-2xl font-black border-2 border-purple-200">🔄 更新即時匯率</button>
+                    
+                    <div class="bg-pink-50 p-4 rounded-2xl border-2 border-pink-200"><label class="text-base font-black text-pink-700 block mb-2">📅 出發日期</label><input type="date" v-model="settings.startDate" class="w-full bg-white rounded-xl p-3 font-bold text-lg border-2 border-pink-100"></div>
+                    
+                    <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-200">
+                        <label class="text-base font-black text-blue-700 block mb-2">💱 幣別管理</label>
+                        <div class="flex flex-wrap gap-2 mb-3"><span v-for="(c,i) in settings.currencies" :key="c.code" class="bg-white px-3 py-2 rounded-xl border-2 border-blue-100 text-sm font-bold shadow-sm flex items-center">{{c.flag}} {{c.code}} <span class="text-gray-400 text-xs ml-1">({{c.rate}})</span> <button @click="removeCurrency(i)" class="text-red-400 ml-2 font-black text-lg">×</button></span></div>
+                        <div class="flex gap-2"><input v-model="newCurrFlag" placeholder="🇹🇼" class="w-12 text-center rounded-xl border-2 border-blue-100 p-2"><input v-model="newCurrCode" placeholder="USD" class="w-20 text-center rounded-xl border-2 border-blue-100 uppercase p-2"><input type="number" v-model.number="newCurrRate" placeholder="匯率" class="flex-1 rounded-xl border-2 border-blue-100 px-2 p-2"><button @click="addCurrency" class="bg-blue-500 text-white rounded-xl px-4 font-black text-xl">+</button></div>
+                    </div>
+
+                    <div class="bg-yellow-50 p-4 rounded-2xl border-2 border-yellow-200"><label class="text-base font-black text-yellow-700 block mb-2">💳 支付方式</label><div class="space-y-2 mb-3"><div v-for="(m, i) in settings.methods" :key="i" class="flex justify-between bg-white p-3 rounded-xl text-sm font-bold border border-yellow-100 shadow-sm"><span>{{m.name}}</span><button @click="removeMethod(i)" class="text-red-400 font-black text-lg">×</button></div></div><div class="flex gap-2"><input v-model="newMethodName" class="w-full text-sm p-3 rounded-xl border-2 border-yellow-100" placeholder="新增..."><button @click="addMethod" class="btn-3d btn-yellow rounded-xl px-4 font-black text-xl">+</button></div></div>
+                    <div class="bg-green-50 p-4 rounded-2xl border-2 border-green-200"><label class="text-base font-black text-green-700 block mb-2">🏪 支付平台</label><div class="space-y-2 mb-3"><div v-for="(p, i) in settings.platforms" :key="i" class="flex justify-between bg-white p-3 rounded-xl text-sm font-bold border border-green-100 shadow-sm"><span>{{p.name}}</span><button @click="removePlatform(i)" class="text-red-400 font-black text-lg">×</button></div></div><div class="flex gap-2"><input v-model="newPlatformName" class="w-full text-sm p-3 rounded-xl border-2 border-green-100" placeholder="新增..."><button @click="addPlatform" class="btn-3d btn-green rounded-xl px-4 font-black text-xl">+</button></div></div>
+                    <div class="bg-purple-50 p-4 rounded-2xl border-2 border-purple-200"><label class="text-base font-black text-purple-700 block mb-1">🤖 Gemini API Key</label><input type="password" v-model="settings.apiKey" placeholder="貼上 Key" class="w-full bg-white rounded-xl p-3 font-bold text-sm outline-none border-2 border-purple-100"></div>
+                    <button @click="exportCSV" class="w-full py-4 btn-3d bg-gray-800 border-gray-900 text-white rounded-2xl font-black">📥 匯出 Excel (CSV)</button>
+                    <button @click="resetAll" class="w-full py-4 text-red-400 font-black text-base border-t-2 border-gray-100">⚠️ 重置所有資料</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch } = Vue;
+
+        createApp({
+            setup() {
+                const load = (k, d) => { try { return JSON.parse(localStorage.getItem('chiikawa_v26_' + k)) || d } catch { return d } };
+                
+                const settings = ref(load('settings', {
+                    totalBudget: 50000, members: ['我'], tripDays: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'], startDate: '', apiKey: '',
+                    currencies: [{ code: 'TWD', flag: '🇹🇼', symbol: 'NT$', rate: 1 }, { code: 'JPY', flag: '🇯🇵', symbol: '¥', rate: 0.215 }, { code: 'USD', flag: '🇺🇸', symbol: '$', rate: 32.5 }],
+                    methods: [{id:'cash',name:'現金'},{id:'card',name:'信用卡'},{id:'suica',name:'西瓜卡'},{id:'apple',name:'Apple Pay'}],
+                    platforms: [{id:'onsite',name:'現場'},{id:'booking',name:'Booking'},{id:'klook',name:'Klook'}]
+                }));
+                const schedule = ref(load('schedule', []));
+                const transactions = ref(load('transactions', []));
+                const shoppingList = ref(load('shopping', []));
+                const photos = ref(load('photos', {}));
+                const packingList = ref(load('packing', [
+                    { name: '衣物', icon: '👕', items: [], newItemName: '' },
+                    { name: '盥洗', icon: '🪥', items: [], newItemName: '' },
+                    { name: '電子', icon: '🔌', items: [], newItemName: '' }
+                ]));
+
+                const activeTab = ref('schedule');
+                const scheduleDay = ref(settings.value.tripDays[0]);
+                const showSettings = ref(false);
+                const showImportMenu = ref(false);
+                const showBatchPacking = ref(false);
+                const showSettlement = ref(false);
+                const ocrProcessing = ref(false);
+                const importTargetDay = ref(settings.value.tripDays[0]);
+                const importText = ref('');
+                const activeBatchCatIdx = ref(0);
+                const editingScheduleId = ref(null);
+                
+                const txForm = ref({ amount: '', currency: 'TWD', category: 'food', item: '', methodId: settings.value.methods[0].id, platformId: settings.value.platforms[0].id, payer: settings.value.members[0], usageType: 'self', targetName: '', date: new Date().toISOString().split('T')[0] });
+                const shopForm = ref({ title: '', price: '', currency: 'JPY', target: '' });
+                const form = ref({ scheduleTime: '', scheduleTitle: '', scheduleLoc: '' });
+                const newMethodName = ref(''); const newPlatformName = ref(''); const newCurrCode = ref(''); const newCurrFlag = ref(''); const newCurrRate = ref(''); const newCatName = ref(''); const newMemberName = ref('');
+
+                const categories = [{ id: 'food', label: '飲食', icon: '🍜', color: 'orange' }, { id: 'transport', label: '交通', icon: '🚌', color: 'blue' }, { id: 'hotel', label: '住宿', icon: '🏨', color: 'indigo' }, { id: 'shop', label: '購物', icon: '🛍️', color: 'pink' }, { id: 'ticket', label: '門票', icon: '🎟️', color: 'purple' }, { id: 'other', label: '其他', icon: '✨', color: 'gray' }];
+
+                watch([settings, schedule, transactions, shoppingList, photos, packingList], () => {
+                    localStorage.setItem('chiikawa_v26_settings', JSON.stringify(settings.value));
+                    localStorage.setItem('chiikawa_v26_schedule', JSON.stringify(schedule.value));
+                    localStorage.setItem('chiikawa_v26_transactions', JSON.stringify(transactions.value));
+                    localStorage.setItem('chiikawa_v26_shopping', JSON.stringify(shoppingList.value));
+                    localStorage.setItem('chiikawa_v26_photos', JSON.stringify(photos.value));
+                    localStorage.setItem('chiikawa_v26_packing', JSON.stringify(packingList.value));
+                }, { deep: true });
+
+                const activeTabName = computed(() => ({ schedule: 'Regina走跳筆記', accounting: '記帳', shopping: '購物清單', packing: '行李清單' }[activeTab.value]));
+                const currentSchedule = computed(() => schedule.value.filter(s => s.day === scheduleDay.value).sort((a,b) => a.time.localeCompare(b.time)));
+                
+                const groupedTransactions = computed(() => {
+                    const groups = {};
+                    const sorted = [...transactions.value].sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+                    sorted.forEach(t => {
+                        if (!groups[t.date]) groups[t.date] = { items: [], totalTWD: 0 };
+                        const tEnhanced = {
+                            ...t,
+                            paymentMethodName: settings.value.methods.find(m => m.id === t.methodId)?.name || '未知',
+                            paymentPlatformName: settings.value.platforms.find(p => p.id === t.platformId)?.name || '未知'
+                        };
+                        groups[t.date].items.push(tEnhanced);
+                        groups[t.date].totalTWD += t.amount * (settings.value.currencies.find(c => c.code === t.currency)?.rate || 1);
+                    });
+                    return groups;
+                });
+
+                const sortedShoppingList = computed(() => [...shoppingList.value].sort((a,b) => (a.bought===b.bought)?0:a.bought?1:-1));
+                const totalSpentTWD = computed(() => transactions.value.reduce((acc, t) => acc + (t.amount * (settings.value.currencies.find(c => c.code === t.currency)?.rate || 1)), 0));
+                const remainingBudget = computed(() => settings.value.totalBudget - totalSpentTWD.value);
+                const shoppingProgress = computed(() => shoppingList.value.length ? Math.round((shoppingList.value.filter(i=>i.bought).length/shoppingList.value.length)*100) : 0);
+                const totalPackingItems = computed(() => packingList.value.reduce((acc, cat) => acc + cat.items.length, 0));
+                const totalPackedItems = computed(() => packingList.value.reduce((acc, cat) => acc + cat.items.filter(i=>i.checked).length, 0));
+                const packingProgress = computed(() => totalPackingItems.value ? Math.round((totalPackedItems.value/totalPackingItems.value)*100) : 0);
+
+                const debts = computed(() => {
+                    const balances = {}; settings.value.members.forEach(m => balances[m] = 0);
+                    transactions.value.forEach(t => {
+                        const amt = t.amount * (settings.value.currencies.find(c => c.code === t.currency)?.rate || 1);
+                        const per = amt / settings.value.members.length;
+                        balances[t.payer] += amt;
+                        settings.value.members.forEach(m => balances[m] -= per);
+                    });
+                    const creds = [], debts = [];
+                    Object.entries(balances).forEach(([m, a]) => a > 1 ? creds.push({m, a}) : a < -1 ? debts.push({m, a}) : null);
+                    const res = [];
+                    let i=0, j=0;
+                    while(i<debts.length && j<creds.length) {
+                        const amt = Math.min(Math.abs(debts[i].a), creds[j].a);
+                        res.push({from: debts[i].m, to: creds[j].m, amount: amt});
+                        debts[i].a += amt; creds[j].a -= amt;
+                        if(Math.abs(debts[i].a)<1) i++; if(creds[j].a<1) j++;
+                    }
+                    return res;
+                });
+
+                // API Rate
+                const fetchRates = async () => {
+                    try {
+                        const res = await fetch('https://api.exchangerate-api.com/v4/latest/TWD');
+                        const data = await res.json();
+                        settings.value.currencies.forEach(c => { if(data.rates[c.code]) c.rate = parseFloat((1 / data.rates[c.code]).toFixed(4)); });
+                        alert('匯率更新成功！');
+                    } catch(e) { alert('更新失敗'); }
+                };
+
+                const parseTextImport = () => {
+                    const lines = importText.value.split('\n');
+                    let count = 0, currentTargetDay = importTargetDay.value;
+                    if(activeTab.value === 'schedule') {
+                        lines.forEach(line => {
+                            const trimmed = line.trim(); if(!trimmed) return;
+                            const dayMatch = trimmed.match(/Day\s*(\d+)/i) || trimmed.match(/第\s*(\d+)\s*天/);
+                            if (dayMatch) { const dayNum = parseInt(dayMatch[1]); if (settings.value.tripDays[dayNum - 1]) currentTargetDay = settings.value.tripDays[dayNum - 1]; return; }
+                            const timeMatch = trimmed.match(/(\d{1,2}[:：]\d{2})/);
+                            if (timeMatch) { const time = timeMatch[1].replace('：', ':').padStart(5, '0'); const title = trimmed.replace(timeMatch[0], '').trim(); if (title) { schedule.value.push({ id: Date.now() + Math.random(), day: currentTargetDay, time: time, title: title, location: '' }); count++; } } 
+                            else { schedule.value.push({ id: Date.now() + Math.random(), day: currentTargetDay, time: '00:00', title: trimmed, location: '' }); count++; }
+                        });
+                    } else { lines.forEach(line => { if(line.trim()) { shoppingList.value.push({ id: Date.now() + Math.random(), title: line.trim(), bought: false, price: '', currency: 'JPY', target: '' }); count++; } }); }
+                    alert(`成功匯入 ${count} 筆！`); importText.value = ''; showImportMenu.value = false;
+                };
+
+                const processImportOCR = (e) => { const file = e.target.files[0]; if(!file) return; ocrProcessing.value = true; Tesseract.recognize(file, 'eng+chi_tra').then(({ data: { text } }) => { importText.value = text; ocrProcessing.value = false; }).catch(() => { ocrProcessing.value = false; alert('辨識失敗'); }); };
+                const handleReceiptOCR = (e) => { const file = e.target.files[0]; if(!file) return; ocrProcessing.value = true; Tesseract.recognize(file, 'eng+chi_tra').then(({ data: { text } }) => { const numbers = text.match(/\d+[.,]\d+/g); if(numbers) txForm.value.amount = Math.max(...numbers.map(n => parseFloat(n.replace(/,/g, '')))); const lines = text.split('\n').filter(l => l.trim().length > 3); if(lines.length > 0) txForm.value.item = lines[0].substring(0, 15); ocrProcessing.value = false; }).catch(() => { ocrProcessing.value = false; alert('辨識失敗'); }); };
+                const handleShoppingOCR = (e) => { const file = e.target.files[0]; if(!file) return; ocrProcessing.value = true; Tesseract.recognize(file, 'chi_tra+eng').then(({ data: { text } }) => { importText.value = text; showImportMenu.value = true; ocrProcessing.value = false; }).catch(() => { ocrProcessing.value = false; alert('辨識失敗'); }); };
+                const saveTransaction = () => { if(!txForm.value.amount) return; transactions.value.unshift({ id: Date.now(), ...txForm.value, amount: parseFloat(txForm.value.amount), date: new Date().toISOString().split('T')[0] }); txForm.value.amount = ''; txForm.value.item = ''; };
+                const addShopItem = () => { if(!shopForm.value.title) return; shoppingList.value.unshift({ id: Date.now(), ...shopForm.value, bought: false }); shopForm.value.title=''; shopForm.value.price=''; shopForm.value.target=''; };
+                
+                const addSchedule = () => { 
+                    if(!form.value.scheduleTitle) return; 
+                    if(editingScheduleId.value) {
+                        const idx = schedule.value.findIndex(i => i.id === editingScheduleId.value);
+                        if(idx !== -1) { schedule.value[idx].time = form.value.scheduleTime || '00:00'; schedule.value[idx].title = form.value.scheduleTitle; schedule.value[idx].location = form.value.scheduleLoc; }
+                        editingScheduleId.value = null;
+                    } else { schedule.value.push({ id: Date.now(), day: scheduleDay.value, time: form.value.scheduleTime||'00:00', title: form.value.scheduleTitle, location: form.value.scheduleLoc }); }
+                    form.value.scheduleTitle=''; form.value.scheduleLoc=''; 
+                };
+
+                const editSchedule = (item) => { form.value.scheduleTime = item.time; form.value.scheduleTitle = item.title; form.value.scheduleLoc = item.location; editingScheduleId.value = item.id; };
+                const cancelEditSchedule = () => { editingScheduleId.value = null; form.value.scheduleTitle = ''; form.value.scheduleLoc = ''; };
+
+                const deleteItem = (type, id) => { if(confirm('刪除？')) { if(type==='schedule') schedule.value = schedule.value.filter(i=>i.id!==id); if(type==='shopping') shoppingList.value = shoppingList.value.filter(i=>i.id!==id); } };
+                const deleteTransaction = (id) => { if(confirm('刪除？')) transactions.value = transactions.value.filter(t=>t.id!==id); };
+                
+                const addMethod = () => { if(newMethodName.value) { settings.value.methods.push({id: Date.now().toString(), name: newMethodName.value}); newMethodName.value=''; } };
+                const removeMethod = (i) => settings.value.methods.splice(i, 1);
+                const addPlatform = () => { if(newPlatformName.value) { settings.value.platforms.push({id: Date.now().toString(), name: newPlatformName.value}); newPlatformName.value=''; } };
+                const removePlatform = (i) => settings.value.platforms.splice(i, 1);
+                const addCurrency = () => { if(newCurrCode.value && newCurrFlag.value) { settings.value.currencies.push({code: newCurrCode.value.toUpperCase(), flag: newCurrFlag.value, symbol: '$', rate: parseFloat(newCurrRate.value)||1}); newCurrCode.value=''; newCurrRate.value=''; newCurrFlag.value=''; } };
+                const removeCurrency = (i) => settings.value.currencies.splice(i, 1);
+                const resetAll = () => { if(confirm('確定清空？')) { localStorage.clear(); location.reload(); } };
+                const handlePhotoUpload = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = () => photos.value[scheduleDay.value] = reader.result; reader.readAsDataURL(file); };
+                const addDay = () => { settings.value.tripDays.push(`Day ${settings.value.tripDays.length+1}`); };
+                const exportCSV = () => { let csv = '\uFEFF日期,項目,金額,幣別,類別,支付方式,平台,用途,代購對象\n'; transactions.value.forEach(t => { const pm = settings.value.methods.find(m => m.id === t.methodId)?.name || '未知'; const pp = settings.value.platforms.find(p => p.id === t.platformId)?.name || '未知'; const cat = categories.find(c=>c.id===t.category)?.label; csv += `${t.date},"${t.item}",${t.amount},${t.currency},${cat},${pm},${pp},${t.usageType==='help'?'代購':'自用'},"${t.targetName||''}"\n`; }); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = `Travel_Export.csv`; a.click(); };
+                const getRate = (code) => settings.value.currencies.find(c => c.code === code)?.rate || 1;
+                const formatNumber = (n) => Math.round(parseFloat(n)).toLocaleString();
+                const getSymbol = (c) => settings.value.currencies.find(x=>x.code===c)?.symbol || '$';
+                const getFlag = (c) => settings.value.currencies.find(x=>x.code===c)?.flag || '';
+                const getCategoryIcon = (id) => categories.find(c=>c.id===id)?.icon || '💸';
+                const getRealDate = (index) => { if (!settings.value.startDate) return ''; const date = new Date(settings.value.startDate); date.setDate(date.getDate() + index); return `${date.getMonth()+1}/${date.getDate()}`; };
+                const addPackingItem = (catIdx) => { if(packingList.value[catIdx].newItemName) { packingList.value[catIdx].items.push({name: packingList.value[catIdx].newItemName, checked: false}); packingList.value[catIdx].newItemName=''; } };
+                const deletePackingItem = (catIdx, itemIdx) => packingList.value[catIdx].items.splice(itemIdx, 1);
+                const addCategory = () => { if(newCatName.value) { packingList.value.push({name: newCatName.value, icon: '📦', items: [], newItemName:''}); newCatName.value=''; } };
+                const deleteCategory = (idx) => { if(confirm('刪除類別？')) packingList.value.splice(idx, 1); };
+                const batchAddPacking = () => { const lines = importText.value.split('\n'); lines.forEach(line => { if(line.trim()) packingList.value[activeBatchCatIdx.value].items.push({name: line.trim(), checked: false}); }); importText.value = ''; showBatchPacking.value = false; };
+                const openBatchPacking = (idx) => { activeBatchCatIdx.value = idx; showBatchPacking.value = true; };
+
+                return {
+                    activeTab, activeTabName, showSettings, showImportMenu, showBatchPacking, showSettlement, ocrProcessing, editingScheduleId,
+                    settings, schedule, transactions, shoppingList, photos, packingList,
+                    scheduleDay, txForm, shopForm, form, newMethodName, newPlatformName, newCurrCode, newCurrFlag, newCurrRate, importText, importTargetDay, newCatName, activeBatchCatIdx,
+                    categories, groupedTransactions, sortedShoppingList, totalSpentTWD, remainingBudget, packingProgress, totalPackedItems, totalPackingItems, debts,
+                    saveTransaction, addShopItem, addSchedule, editSchedule, cancelEditSchedule, deleteItem, deleteTransaction,
+                    addMethod, removeMethod, addPlatform, removePlatform, addCurrency, removeCurrency, resetAll, handlePhotoUpload, 
+                    handleReceiptOCR, handleShoppingOCR, addDay, processImportOCR, parseTextImport, exportCSV,
+                    addPackingItem, deletePackingItem, addCategory, deleteCategory, batchAddPacking, openBatchPacking, fetchRates, getRate,
+                    formatNumber, getSymbol, getFlag, getCategoryIcon, getRealDate
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
